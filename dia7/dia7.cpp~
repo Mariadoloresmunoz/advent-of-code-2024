@@ -1,0 +1,105 @@
+#include <iostream>
+#include <vector>
+#include <sstream>
+#include <fstream>
+#include <unordered_map>
+#include <string>
+
+using namespace std;
+
+// Helper function to evaluate expressions left-to-right
+long evaluateLeftToRight(const vector<int>& nums, const vector<char>& ops) {
+    long result = nums[0];
+    for (size_t i = 0; i < ops.size(); ++i) {
+        if (ops[i] == '+') {
+            result += nums[i + 1];
+        } else if (ops[i] == '*') {
+            result *= nums[i + 1];
+        }
+    }
+    return result;
+}
+
+// Recursive function to explore all operator combinations
+bool isPossibleToReachTarget(const vector<int>& nums, int target, vector<char>& ops, int pos, unordered_map<string, bool>& memo) {
+    if (pos == nums.size() - 1) {
+        string key;
+        for (char op : ops) key += op;
+        if (memo.count(key)) return memo[key];
+        return memo[key] = (evaluateLeftToRight(nums, ops) == target);
+    }
+
+    ops.push_back('+');
+    if (isPossibleToReachTarget(nums, target, ops, pos + 1, memo)) return true;
+    ops.pop_back();
+
+    ops.push_back('*');
+    if (isPossibleToReachTarget(nums, target, ops, pos + 1, memo)) return true;
+    ops.pop_back();
+
+    return false;
+}
+
+// Main function to process each line and determine valid equations
+int processEquations(const vector<pair<int, vector<int>>>& equations) {
+    int totalSum = 0;
+    for (const auto& eq : equations) {
+        int target = eq.first;
+        const vector<int>& nums = eq.second;
+        vector<char> ops;
+        unordered_map<string, bool> memo;
+
+        if (nums.size() == 1 && nums[0] == target) {
+            totalSum += target;
+            continue;
+        }
+        if (isPossibleToReachTarget(nums, target, ops, 0, memo)) {
+            totalSum += target;
+        }
+    }
+    return totalSum;
+}
+
+// Function to read input from a file
+vector<pair<int, vector<int>>> readInput(const string& filename) {
+    ifstream file(filename);
+    vector<pair<int, vector<int>>> equations;
+
+    if (!file) {
+        cerr << "Error: Unable to open file " << filename << endl;
+        return equations;
+    }
+
+    string line;
+    while (getline(file, line)) {
+        stringstream ss(line);
+        int target;
+        char colon;
+
+        if (!(ss >> target >> colon)) {
+            cerr << "Error: Malformed line: " << line << endl;
+            continue;
+        }
+
+        vector<int> nums;
+        int num;
+        while (ss >> num) {
+            nums.push_back(num);
+        }
+
+        equations.emplace_back(target, nums);
+    }
+
+    file.close();
+    return equations;
+}
+
+int main() {
+    string filename = "input.txt"; 
+    vector<pair<int, vector<int>>> equations = readInput(filename);
+    
+    int result = processEquations(equations);
+    cout << "Total sum of valid calibration values: " << result << endl;
+
+    return 0;
+}
