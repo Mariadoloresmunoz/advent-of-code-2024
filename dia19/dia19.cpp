@@ -2,81 +2,73 @@
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iterator>
 
-using namespace std;
+struct TreeNode {
+    std::string word;
+    TreeNode *left = nullptr, *right = nullptr;
+    TreeNode(const std::string& w) : word(w) {}
+};
 
-// Función para leer el archivo "input.txt"
-bool readFile(vector<string>& lines) {
-    ifstream in("input.txt");
-    if (!in) {
-        cerr << "No se pudo abrir el archivo input.txt\n";
-        return false;
-    }
-    string str;
-    while (getline(in, str)) {
-        lines.push_back(str);
-    }
-    return true;
+TreeNode* insert(TreeNode* root, const std::string& word) {
+    if (!root) return new TreeNode(word);
+    if (word < root->word) root->left = insert(root->left, word);
+    else if (word > root->word) root->right = insert(root->right, word);
+    return root;
 }
 
-// Función para cargar las palabras iniciales en un conjunto
-set<string> loadWords(const string& line) {
-	
-    set<string> wordSet;// creamos un conjunto para almacenar palabras unicas
-    istringstream iss(line);
-    string word;
-    while (iss >> word) {// vamos leyendo y separando las palabras utilizando la coma separador 
-        if (word.back() == ',') {
-            word.pop_back();
-        }
-        if (!word.empty()) {
-            wordSet.insert(word);
-        }
+bool search(TreeNode* root, const std::string& word) {
+    while (root) {
+        if (root->word == word) return true;
+        root = word < root->word ? root->left : root->right;
     }
-    return wordSet; // devolvemos el conjunto con las palabras unicas
+    return false;
 }
 
-// Función para determinar si una palabra puede construirse a partir de otras
-bool canBuild(const set<string>& words, const string& word, map<string, bool>& cache) {
-    if (auto it = cache.find(word); it != cache.end()) {
-        return it->second; // si la palabra está en la caché, devuelve su valor 
-    }
-    if (words.count(word)) {// si la palabra está en el conjunto entonces es contruible
-        cache[word] = true; // alamacenamos la palabra en cache como verdadera
-        return true;
-    }
-    // recorremos cada posible particion de la palabra
+bool canBuild(TreeNode* root, const std::string& word, std::map<std::string, bool>& cache) {
+    if (auto it = cache.find(word); it != cache.end()) return it->second;
+    if (search(root, word)) return cache[word] = true;
     for (size_t i = 1; i < word.size(); ++i) {
-    	// comprobamos si ambas partes son contruibles
-        if (canBuild(words, word.substr(0, i), cache) && canBuild(words, word.substr(i), cache)) {
+        if (canBuild(root, word.substr(0, i), cache) && canBuild(root, word.substr(i), cache))
             return cache[word] = true;
-        }
     }
-    return cache[word] = false; // si no podemos contruir guardamos como falso y devolvemos 
+    return cache[word] = false;
 }
 
 int main() {
-    vector<string> lines; // creamos vector para almacenar las lineas
-    
-    if (!readFile(lines) || lines.empty()) {
+    std::ifstream file("input.txt");
+    if (!file) {
+        std::cerr << "Cannot open file input.txt\n";
         return EXIT_FAILURE;
     }
 
-    set<string> wordSet = loadWords(lines[0]);
-    map<string, bool> cache;
-    int count = 0;
+    std::string line;
+    std::getline(file, line);  // Leer la primera línea para el árbol
+    std::istringstream iss(line);
+    TreeNode* root = nullptr;
+    for (std::string word; iss >> word; ) {
+        if (word.back() == ',') word.pop_back();
+        root = insert(root, word);
+    }
 
-	// recorremos lineas e incementamos contador si la palabra es construible
-    for (size_t i = 2; i < lines.size(); ++i) {
-        if (canBuild(wordSet, lines[i], cache)) {
-            ++count;
+    std::vector<std::string> lines;
+    while (std::getline(file, line)) {
+        if (!line.empty()) {
+            lines.push_back(line);
         }
     }
-    
-    cout << count << '\n'; // imprimimos contador con cantidad de palabras construibles 
+	
+    int count = 1; //Inicializamos a 1 para contar con el nodo raíz 
+    std::map<std::string, bool> cache;
+    for (size_t i = 2; i < lines.size(); ++i) {  // Procesar desde la segunda línea
+        if (canBuild(root, lines[i], cache)) ++count;
+    }
+
+    std::cout << count << '\n';
     return EXIT_SUCCESS;
 }
+
+
